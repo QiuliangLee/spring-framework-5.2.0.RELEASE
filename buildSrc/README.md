@@ -28,7 +28,7 @@ configurations are preferred.
 ## Test sources
 
 The `org.springframework.build.test-sources` updates `testCompile` dependencies to include
-the test source sets of `project()` dependencies. This plugin is used in the Spring Framework build 
+the test source sets of `project()` dependencies. This plugin is used in the Spring Framework build
 to share test utilities and fixtures amongst modules.
 
 ## API Diff

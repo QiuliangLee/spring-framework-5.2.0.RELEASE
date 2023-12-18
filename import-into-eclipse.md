@@ -31,16 +31,21 @@ _Within your locally cloned `spring-framework` working directory:_
 ## Known Issues
 
 1. `spring-core` and `spring-oxm` should be pre-compiled due to repackaged dependencies.
-  - See `*RepackJar` tasks in the build.
+
+- See `*RepackJar` tasks in the build.
+
 2. `spring-aspects` does not compile due to references to aspect types unknown to Eclipse.
-  - If you install [AJDT](https://www.eclipse.org/ajdt/downloads/) into Eclipse it should
-    work.
+
+- If you install [AJDT](https://www.eclipse.org/ajdt/downloads/) into Eclipse it should
+  work.
+
 3. While JUnit tests pass from the command line with Gradle, some may fail when run from
    the IDE.
-  - Resolving this is a work in progress.
-  - If attempting to run all JUnit tests from within the IDE, you will likely need to set
-    the following VM options to avoid out of memory errors:
-	`-XX:MaxPermSize=2048m -Xmx2048m -XX:MaxHeapSize=2048m`
+
+- Resolving this is a work in progress.
+- If attempting to run all JUnit tests from within the IDE, you will likely need to set
+  the following VM options to avoid out of memory errors:
+  `-XX:MaxPermSize=2048m -Xmx2048m -XX:MaxHeapSize=2048m`
 
 ## Tips
 

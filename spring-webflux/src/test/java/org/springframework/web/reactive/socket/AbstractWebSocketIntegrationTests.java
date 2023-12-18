@@ -16,28 +16,10 @@
 
 package org.springframework.web.reactive.socket;
 
-import java.io.File;
-import java.io.IOException;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.stream.Stream;
-
 import org.apache.tomcat.websocket.server.WsContextListener;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.xnio.OptionMap;
-import org.xnio.Xnio;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-import reactor.util.function.Tuple3;
-
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.Lifecycle;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
@@ -64,6 +46,23 @@ import org.springframework.web.reactive.socket.server.upgrade.ReactorNettyReques
 import org.springframework.web.reactive.socket.server.upgrade.TomcatRequestUpgradeStrategy;
 import org.springframework.web.reactive.socket.server.upgrade.UndertowRequestUpgradeStrategy;
 import org.springframework.web.server.adapter.WebHttpHandlerBuilder;
+import org.xnio.OptionMap;
+import org.xnio.Xnio;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple3;
+
+import java.io.File;
+import java.io.IOException;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.stream.Stream;
 
 /**
  * Base class for WebSocket integration tests. Sub-classes must implement
@@ -76,156 +75,148 @@ import org.springframework.web.server.adapter.WebHttpHandlerBuilder;
 @SuppressWarnings({"unused", "WeakerAccess"})
 abstract class AbstractWebSocketIntegrationTests {
 
-	private static final File TMP_DIR = new File(System.getProperty("java.io.tmpdir"));
+    private static final File TMP_DIR = new File(System.getProperty("java.io.tmpdir"));
+    protected WebSocketClient client;
+    protected HttpServer server;
+    protected Class<?> serverConfigClass;
+    protected int port;
 
-	@Retention(RetentionPolicy.RUNTIME)
-	@Target(ElementType.METHOD)
-	@ParameterizedTest(name = "[{index}] client[{0}], server[{1}]")
-	@MethodSource("arguments")
-	@interface ParameterizedWebSocketTest {
-	}
+    static Stream<Object[]> arguments() throws IOException {
 
-	static Stream<Object[]> arguments() throws IOException {
+        WebSocketClient[] clients = new WebSocketClient[]{
+                new TomcatWebSocketClient(),
+                new JettyWebSocketClient(),
+                new ReactorNettyWebSocketClient(),
+                new UndertowWebSocketClient(Xnio.getInstance().createWorker(OptionMap.EMPTY))
+        };
 
-		WebSocketClient[] clients = new WebSocketClient[] {
-				new TomcatWebSocketClient(),
-				new JettyWebSocketClient(),
-				new ReactorNettyWebSocketClient(),
-				new UndertowWebSocketClient(Xnio.getInstance().createWorker(OptionMap.EMPTY))
-		};
+        Map<HttpServer, Class<?>> servers = new LinkedHashMap<>();
+        servers.put(new TomcatHttpServer(TMP_DIR.getAbsolutePath(), WsContextListener.class), TomcatConfig.class);
+        servers.put(new JettyHttpServer(), JettyConfig.class);
+        servers.put(new ReactorHttpServer(), ReactorNettyConfig.class);
+        servers.put(new UndertowHttpServer(), UndertowConfig.class);
 
-		Map<HttpServer, Class<?>> servers = new LinkedHashMap<>();
-		servers.put(new TomcatHttpServer(TMP_DIR.getAbsolutePath(), WsContextListener.class), TomcatConfig.class);
-		servers.put(new JettyHttpServer(), JettyConfig.class);
-		servers.put(new ReactorHttpServer(), ReactorNettyConfig.class);
-		servers.put(new UndertowHttpServer(), UndertowConfig.class);
+        // Try each client once against each server..
 
-		// Try each client once against each server..
+        Flux<WebSocketClient> f1 = Flux.fromArray(clients)
+                .concatMap(c -> Mono.just(c).repeat(servers.size() - 1));
 
-		Flux<WebSocketClient> f1 = Flux.fromArray(clients)
-				.concatMap(c -> Mono.just(c).repeat(servers.size() - 1));
+        Flux<Map.Entry<HttpServer, Class<?>>> f2 = Flux.fromIterable(servers.entrySet())
+                .repeat(clients.length - 1)
+                .share();
 
-		Flux<Map.Entry<HttpServer, Class<?>>> f2 = Flux.fromIterable(servers.entrySet())
-				.repeat(clients.length - 1)
-				.share();
+        return Flux.zip(f1, f2.map(Map.Entry::getKey), f2.map(Map.Entry::getValue))
+                .map(Tuple3::toArray)
+                .toStream();
+    }
 
-		return Flux.zip(f1, f2.map(Map.Entry::getKey), f2.map(Map.Entry::getValue))
-				.map(Tuple3::toArray)
-				.toStream();
-	}
+    protected void startServer(WebSocketClient client, HttpServer server, Class<?> serverConfigClass) throws Exception {
+        this.client = client;
+        this.server = server;
+        this.serverConfigClass = serverConfigClass;
 
+        this.server.setHandler(createHttpHandler());
+        this.server.afterPropertiesSet();
+        this.server.start();
 
-	protected WebSocketClient client;
+        // Set dynamically chosen port
+        this.port = this.server.getPort();
 
-	protected HttpServer server;
+        if (this.client instanceof Lifecycle) {
+            ((Lifecycle) this.client).start();
+        }
+    }
 
-	protected Class<?> serverConfigClass;
+    @AfterEach
+    void stopServer() {
+        if (this.client instanceof Lifecycle) {
+            ((Lifecycle) this.client).stop();
+        }
+        this.server.stop();
+    }
 
-	protected int port;
+    private HttpHandler createHttpHandler() {
+        ApplicationContext context = new AnnotationConfigApplicationContext(
+                DispatcherConfig.class, this.serverConfigClass, getWebConfigClass());
+        return WebHttpHandlerBuilder.applicationContext(context).build();
+    }
 
+    protected URI getUrl(String path) throws URISyntaxException {
+        return new URI("ws://localhost:" + this.port + path);
+    }
 
-	protected void startServer(WebSocketClient client, HttpServer server, Class<?> serverConfigClass) throws Exception {
-		this.client = client;
-		this.server = server;
-		this.serverConfigClass = serverConfigClass;
+    protected abstract Class<?> getWebConfigClass();
 
-		this.server.setHandler(createHttpHandler());
-		this.server.afterPropertiesSet();
-		this.server.start();
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.METHOD)
+    @ParameterizedTest(name = "[{index}] client[{0}], server[{1}]")
+    @MethodSource("arguments")
+    @interface ParameterizedWebSocketTest {
+    }
 
-		// Set dynamically chosen port
-		this.port = this.server.getPort();
+    @Configuration
+    static class DispatcherConfig {
 
-		if (this.client instanceof Lifecycle) {
-			((Lifecycle) this.client).start();
-		}
-	}
-
-	@AfterEach
-	void stopServer() {
-		if (this.client instanceof Lifecycle) {
-			((Lifecycle) this.client).stop();
-		}
-		this.server.stop();
-	}
-
-
-	private HttpHandler createHttpHandler() {
-		ApplicationContext context = new AnnotationConfigApplicationContext(
-				DispatcherConfig.class, this.serverConfigClass, getWebConfigClass());
-		return WebHttpHandlerBuilder.applicationContext(context).build();
-	}
-
-	protected URI getUrl(String path) throws URISyntaxException {
-		return new URI("ws://localhost:" + this.port + path);
-	}
-
-	protected abstract Class<?> getWebConfigClass();
-
-
-	@Configuration
-	static class DispatcherConfig {
-
-		@Bean
-		public DispatcherHandler webHandler() {
-			return new DispatcherHandler();
-		}
-	}
+        @Bean
+        public DispatcherHandler webHandler() {
+            return new DispatcherHandler();
+        }
+    }
 
 
-	static abstract class AbstractHandlerAdapterConfig {
+    static abstract class AbstractHandlerAdapterConfig {
 
-		@Bean
-		public WebSocketHandlerAdapter handlerAdapter() {
-			return new WebSocketHandlerAdapter(webSocketService());
-		}
+        @Bean
+        public WebSocketHandlerAdapter handlerAdapter() {
+            return new WebSocketHandlerAdapter(webSocketService());
+        }
 
-		@Bean
-		public WebSocketService webSocketService() {
-			return new HandshakeWebSocketService(getUpgradeStrategy());
-		}
+        @Bean
+        public WebSocketService webSocketService() {
+            return new HandshakeWebSocketService(getUpgradeStrategy());
+        }
 
-		protected abstract RequestUpgradeStrategy getUpgradeStrategy();
-	}
-
-
-	@Configuration
-	static class ReactorNettyConfig extends AbstractHandlerAdapterConfig {
-
-		@Override
-		protected RequestUpgradeStrategy getUpgradeStrategy() {
-			return new ReactorNettyRequestUpgradeStrategy();
-		}
-	}
+        protected abstract RequestUpgradeStrategy getUpgradeStrategy();
+    }
 
 
-	@Configuration
-	static class TomcatConfig extends AbstractHandlerAdapterConfig {
+    @Configuration
+    static class ReactorNettyConfig extends AbstractHandlerAdapterConfig {
 
-		@Override
-		protected RequestUpgradeStrategy getUpgradeStrategy() {
-			return new TomcatRequestUpgradeStrategy();
-		}
-	}
-
-
-	@Configuration
-	static class UndertowConfig extends AbstractHandlerAdapterConfig {
-
-		@Override
-		protected RequestUpgradeStrategy getUpgradeStrategy() {
-			return new UndertowRequestUpgradeStrategy();
-		}
-	}
+        @Override
+        protected RequestUpgradeStrategy getUpgradeStrategy() {
+            return new ReactorNettyRequestUpgradeStrategy();
+        }
+    }
 
 
-	@Configuration
-	static class JettyConfig extends AbstractHandlerAdapterConfig {
+    @Configuration
+    static class TomcatConfig extends AbstractHandlerAdapterConfig {
 
-		@Override
-		protected RequestUpgradeStrategy getUpgradeStrategy() {
-			return new JettyRequestUpgradeStrategy();
-		}
-	}
+        @Override
+        protected RequestUpgradeStrategy getUpgradeStrategy() {
+            return new TomcatRequestUpgradeStrategy();
+        }
+    }
+
+
+    @Configuration
+    static class UndertowConfig extends AbstractHandlerAdapterConfig {
+
+        @Override
+        protected RequestUpgradeStrategy getUpgradeStrategy() {
+            return new UndertowRequestUpgradeStrategy();
+        }
+    }
+
+
+    @Configuration
+    static class JettyConfig extends AbstractHandlerAdapterConfig {
+
+        @Override
+        protected RequestUpgradeStrategy getUpgradeStrategy() {
+            return new JettyRequestUpgradeStrategy();
+        }
+    }
 
 }

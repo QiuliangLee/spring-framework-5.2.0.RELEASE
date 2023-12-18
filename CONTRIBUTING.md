@@ -1,15 +1,15 @@
 # Contributing  to the Spring Framework
 
-First off, thank you for taking the time to contribute! :+1: :tada: 
+First off, thank you for taking the time to contribute! :+1: :tada:
 
 ### Table of Contents
 
 * [Code of Conduct](#code-of-conduct)
 * [How to Contribute](#how-to-contribute)
-  * [Discuss](#discuss)
-  * [Create a Ticket](#create-a-ticket)
-  * [Ticket Lifecycle](#ticket-lifecycle)
-  * [Submit a Pull Request](#submit-a-pull-request)
+    * [Discuss](#discuss)
+    * [Create a Ticket](#create-a-ticket)
+    * [Ticket Lifecycle](#ticket-lifecycle)
+    * [Submit a Pull Request](#submit-a-pull-request)
 * [Build from Source](#build-from-source)
 * [Source Code Style](#source-code-style)
 * [Reference Docs](#reference-docs)
@@ -36,11 +36,14 @@ it helps us to make a decision.
 #### Create a Ticket
 
 Reporting an issue or making a feature request is a great way to contribute. Your feedback
-and the conversations that result from it provide a continuous flow of ideas. 
+and the conversations that result from it provide a continuous flow of ideas.
 
 Before you create a ticket, please take the time to [research first](#discuss).
 
-If creating a ticket after a discussion on StackOverflow, please provide a self-sufficient description in the ticket, independent of the details on StackOverflow. We understand this is extra work but the issue tracker is an important place of record for design discussions and decisions that can often be referenced long after the fix version, for example to revisit decisions, to understand the origin of a feature, and so on.
+If creating a ticket after a discussion on StackOverflow, please provide a self-sufficient description in the ticket,
+independent of the details on StackOverflow. We understand this is extra work but the issue tracker is an important
+place of record for design discussions and decisions that can often be referenced long after the fix version, for
+example to revisit decisions, to understand the origin of a feature, and so on.
 
 When ready create a ticket in the [GitHub issue tracker](https://github.com/spring-projects/spring-framework/issues).
 
@@ -60,32 +63,32 @@ related ticket with a fresh description.
 You can contribute a source code change by submitting a pull request.
 
 1. If you have not previously done so, please sign the
-[Contributor License Agreement](https://cla.pivotal.io/sign/spring). You will also be reminded
-automatically when you submit a pull request.
+   [Contributor License Agreement](https://cla.pivotal.io/sign/spring). You will also be reminded
+   automatically when you submit a pull request.
 
 1. Should you create a ticket first? The answer is no. Just create the pull request and use
-the description to provide context and motivation, as you would for an issue. If you want
-to start a discussion first or have already created an issue, once a pull request is created,
-we will close the issue as superseded by the pull request, and the discussion of the issue
-will continue under the pull request.
+   the description to provide context and motivation, as you would for an issue. If you want
+   to start a discussion first or have already created an issue, once a pull request is created,
+   we will close the issue as superseded by the pull request, and the discussion of the issue
+   will continue under the pull request.
 
 1. Always check out the `master` branch and submit pull requests against it
-(for target version see [settings.gradle](settings.gradle)).
-Backports to prior versions will be considered on a case-by-case basis and reflected as
-the fix version in the issue tracker.
+   (for target version see [settings.gradle](settings.gradle)).
+   Backports to prior versions will be considered on a case-by-case basis and reflected as
+   the fix version in the issue tracker.
 
 1. Use short branch names, preferably based on the GitHub issue (e.g. `22276`), or
-otherwise using succinct, lower-case, dash (-) delimited names, such as `fix-warnings`.
+   otherwise using succinct, lower-case, dash (-) delimited names, such as `fix-warnings`.
 
 1. Choose the granularity of your commits consciously and squash commits that represent
-multiple edits or corrections of the same logical change. See
-[Rewriting History section of Pro Git](https://git-scm.com/book/en/Git-Tools-Rewriting-History)
-for an overview of streamlining commit history.
+   multiple edits or corrections of the same logical change. See
+   [Rewriting History section of Pro Git](https://git-scm.com/book/en/Git-Tools-Rewriting-History)
+   for an overview of streamlining commit history.
 
 1. Format commit messages using 55 characters for the subject line, 72 characters per line
-for the description, followed by the issue fixed, e.g. `Closes gh-22276`. See the
-[Commit Guidelines section of Pro Git](https://git-scm.com/book/en/Distributed-Git-Contributing-to-a-Project#Commit-Guidelines)
-for best practices around commit messages and use `git log` to see some examples.
+   for the description, followed by the issue fixed, e.g. `Closes gh-22276`. See the
+   [Commit Guidelines section of Pro Git](https://git-scm.com/book/en/Distributed-Git-Contributing-to-a-Project#Commit-Guidelines)
+   for best practices around commit messages and use `git log` to see some examples.
 
 1. List the GitHub issue number in the PR description.
 
